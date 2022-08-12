@@ -6,7 +6,7 @@ let baseDeDatos = new BaseDeDatos();
 const add_attendance = async (req, res, next) => {
 
   try {
-      const attendance = await baseDeDatos.add_attendance(req.user.email, req.body.course, req.body.state, req.body.date)     
+      const attendance = await baseDeDatos.add_attendance(req.user.email, req.body.course, req.body.status, req.body.date)     
       res.send(attendance);
   } catch (error) {
       res.status(500).send(error);
