@@ -15,12 +15,12 @@ const add_attendance = async (req, res, next) => {
 
 const logout = (req, res, next) => {
 
-  //console.log(req.user.email + " ha cerrado sesión.");
+  console.log(req.user.email + " ha cerrado sesión.");
 
   req.logout(function(err) {
     if (err) { return next(err); }
     res.clearCookie("token");
-    res.redirect("http://localhost:3000/");
+    res.redirect(process.env.FRONT_URL);
     console.log(`-------> User Logged out`);
   });
 
