@@ -1,5 +1,3 @@
-
-/*
 var mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema({
@@ -21,7 +19,18 @@ const attendanceSchema = new mongoose.Schema({
   }
 });
 
-const attendance = mongoose.model("attendance", attendanceSchema);
+const studentSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true
+  },
+  attendances: [
+    attendanceSchema
+  ]
+});
 
-module.exports = attendance;
-*/
+const student = mongoose.model("student", studentSchema);
+
+module.exports = student;
