@@ -29,7 +29,9 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+//app.use(express.static(path.join(__dirname, 'public')));
+//Here is where I call de react static page made with build script
+app.use(express.static(path.join(__dirname, 'build')));
 //Middleware sesssion persists in Mongo
 app.use(session({
   store: MongoStore.create({ 
