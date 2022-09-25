@@ -25,7 +25,7 @@ router.all('*', (req, res, next) => {
   next();
 });
 
-router.get('/logout', logout);
-router.post('/attendance', multer().none(), checkAuthenticated, add_attendance);
+router.get('/api/logout', logout);
+router.post('/api/attendance', multer().none(), checkAuthenticated, add_attendance);
 
 module.exports = router;
