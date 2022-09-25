@@ -1,151 +1,90 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var cors = require('cors');
-var cookieParser = require('cookie-parser');
-var MongoStore = require('connect-mongo');
+#!/usr/bin/env node
 
-var passport = require('passport');
-var GoogleStrategy = require('passport-google-oauth2').Strategy;
-var JWTstrategy = require('passport-jwt').Strategy;
-var {ExtractJwt} = require('passport-jwt');
+/**
+ * Module dependencies.
+ */
 
-var session = require('express-session');
-var jwt = require('jsonwebtoken');
+var app = require('../index');
+var debug = require('debug')('back-manual-attendance:server');
+var http = require('http');
 
-require('../config/database.js');
-var indexRouter = require('../routes/index');
+/**
+ * Get port from environment and store in Express.
+ */
 
-var app = express();
+var port = normalizePort(process.env.PORT || '8080');
+app.set('port', port);
 
-// view engine setup
-app.set('views', path.join(__dirname, '../views'));
-app.set('view engine', 'jade');
+/**
+ * Create HTTP server.
+ */
 
-app.use(cors());
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-//app.use(express.static(path.join(__dirname, 'public')));
-//Here is where I call de react static page made with build script
-app.use(express.static(path.join(__dirname, '../build')));
-//Middleware sesssion persists in Mongo
-app.use(session({
-  store: MongoStore.create({ 
-    mongoUrl: `${process.env.MONGO_URL}`,
-    ttl: 60 * 10
-  }),
-  secret: 'secreto',
-  resave: true,
-  saveUninitialized: true,
-}))
+var server = http.createServer(app);
 
-app.use(passport.initialize()) // init passport on every route call
-app.use(passport.session())    //allow passport to use "express-session"
-//Get the GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from Google Developer Console
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
+/**
+ * Listen on provided port, on all network interfaces.
+ */
 
-const authUser = (request, accessToken, refreshToken, profile, done) => {
-  
-  if (profile._json.domain !== 'fi.uba.ar') {
-      return done(new Error("Wrong domain!"));
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
   }
 
-  return done(null, profile);
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
 }
 
-//set the JWT options
-const jwtOptions ={} 
-//jwtOptions.jwtFromRequest = ExtractJwt.fromUrlQueryParameter('secret_token'); 
-jwtOptions.jwtFromRequest=ExtractJwt.fromExtractors([ExtractJwt.fromUrlQueryParameter("secret_token"), ExtractJwt.fromHeader("secret_token"), ExtractJwt.fromAuthHeaderAsBearerToken()]);
-//here we have defined all possible extractors in an array
-jwtOptions.secretOrKey = process.env.JWT_SECRET_KEY;
+/**
+ * Event listener for HTTP server "error" event.
+ */
 
-//Use "GoogleStrategy" as the Authentication Strategy
-passport.use(new GoogleStrategy({
-  clientID:     GOOGLE_CLIENT_ID,
-  clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.BACK_URL + "/api/auth/google/callback",
-  passReqToCallback   : true
-  }, authUser));
-
-
-passport.serializeUser( async (user, done) => { 
-  console.log(`\n--------> Serialize User:`)
-  console.log(user)
-
-  done(null, user)
-} )
-
-passport.deserializeUser((user, done) => {
-  console.log("\n--------- Deserialized User:")
-  console.log(user)
-
-  done (null, user)
-})
-
-app.get('/api/auth/google',
-  passport.authenticate('google', {
-      hd: 'fi.uba.ar',
-      scope: [
-        'email',
-        'profile'
-      ]
-  })
-);
-
-app.get(
-  '/api/auth/google/callback',
-  passport.authenticate("google"),
-  async function (req, res) {
-    if (req.user) {
-      const token = jwt.sign({id:req.user.email}, process.env.JWT_SECRET_KEY, {expiresIn: process.env.TOKEN_KEEP_ALIVE}); 
-      res.cookie('token', token);
-      
-      console.log(req.user.email + " ha iniciado sesión.");  
-    }      
-    res.redirect(process.env.FRONT_URL);
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
   }
-);
 
-passport.use(new JWTstrategy( 
-  jwtOptions,
-  async (token, done) => {
-    try {
-      return done(null, token.id);
-    } catch (error) {
-      done(error);
-    }
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
   }
-)
-);
+}
 
-//Here is the secrete of all, passing the value in res.locals variable
-app.use((req, res, next) => {
-  res.locals.authenticated = req.isAuthenticated();
-  next();
-});
+/**
+ * Event listener for HTTP server "listening" event.
+ */
 
-app.use('/', indexRouter);
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === process.env.BACK_URL ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
-
-module.exports = app;
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
