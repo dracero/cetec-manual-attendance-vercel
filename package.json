@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "nodemon ./api/index.js"
+    "start": "start ./api/index.js"
   },
   "dependencies": {
     "connect-mongo": "^4.6.0",
